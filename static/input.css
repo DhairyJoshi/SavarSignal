@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@source "../templates/**/*.html";
+@source "../app.py";
+
+/* ── Atlassian Design System (ADS) Tokens ──────────────────────────────────── */
+@theme {
+  /* ADS Blue (Primary) */
+  --color-ads-blue-50: #E6FCFF;
+  --color-ads-blue-100: #B3F5FF;
+  --color-ads-blue-400: #2684FF;
+  --color-ads-blue-500: #0052CC;
+  --color-ads-blue-600: #0747A6;
+  --color-ads-blue-700: #003366;
+  
+  /* ADS Neutrals */
+  --color-ads-neutral-0: #FFFFFF;
+  --color-ads-neutral-10: #FAFBFC;
+  --color-ads-neutral-20: #F4F5F7;
+  --color-ads-neutral-30: #EBECF0;
+  --color-ads-neutral-40: #DFE1E6;
+  --color-ads-neutral-500: #42526E;
+  --color-ads-neutral-800: #172B4D;
+
+  /* ADS Status Colors */
+  --color-ads-green-400: #36B37E;
+  --color-ads-green-500: #00875A;
+  
+  --color-ads-red-400: #FF5630;
+  --color-ads-red-500: #DE350B;
+  
+  --color-ads-yellow-400: #FFAB00;
+  --color-ads-yellow-500: #FF991F;
+
+  /* Classic system fonts for Atlassian look */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm 14mm;
+  }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: white !important; color: #172B4D !important; }
+  .brief-page { box-shadow: none !important; border: none !important; padding: 0 !important; }
+}
+
+/* ── UI Components ── */
+.ads-card {
+  background-color: var(--color-ads-neutral-0);
+  border: 1px solid var(--color-ads-neutral-40);
+  border-radius: 3px;
+  box-shadow: 0 1px 1px rgba(9, 30, 66, 0.1), 0 0 1px rgba(9, 30, 66, 0.1);
+}
+
+.drop-zone {
+  border: 2px dashed var(--color-ads-neutral-40);
+  border-radius: 3px;
+  background-color: var(--color-ads-neutral-10);
+  transition: all 0.2s ease;
+}
+.drop-zone.drag-over {
+  border-color: var(--color-ads-blue-500);
+  background-color: #DEEBFF;
+}
+
+/* ── Badges & Chips ── */
+.severity-high { @apply bg-red-50 text-red-700 font-semibold border border-red-200; }
+.severity-medium { @apply bg-yellow-50 text-yellow-800 font-semibold border border-yellow-200; }
+.severity-low { @apply bg-green-50 text-green-700 font-semibold border border-green-200; }
+
+.conf-likely { @apply bg-blue-50 text-blue-700 font-medium border border-blue-200; }
+.conf-possible { @apply bg-purple-50 text-purple-700 font-medium border border-purple-200; }
+.conf-unknown { @apply bg-slate-100 text-slate-700 font-medium border border-slate-200; }
+
+/* ── Base elements ── */
+button:not(:disabled), .cursor-pointer {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

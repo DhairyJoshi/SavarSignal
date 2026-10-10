@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Node / Tailwind
+node_modules/
+package-lock.json
+
+# Application Data
+data/history.json
+data/sample/*.csv
+data/sample/*.json
+data/briefs/*.html
+!data/sample/.gitkeep
+!data/briefs/.gitkeep
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

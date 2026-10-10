@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Two-Minute Morning Brief | Ahmedabad Transport MIS</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="min-h-screen font-sans text-ads-neutral-800 bg-ads-neutral-10 flex flex-col">
+
+  <!-- Atlassian-style Top Navigation -->
+  <nav class="bg-ads-blue-500 text-white flex items-center px-4 py-2.5 shadow-sm sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <i data-lucide="train-track" class="w-6 h-6"></i>
+      <span class="font-semibold text-lg tracking-tight">Morning Brief</span>
+    </div>
+  </nav>
+
+  <div class="flex-1 max-w-5xl w-full mx-auto px-4 py-8">
+    
+    <header class="mb-8">
+      <h1 class="text-2xl font-medium text-ads-neutral-800 tracking-tight">Generate Daily MIS Brief</h1>
+      <p class="text-ads-neutral-500 text-sm mt-1">Upload Metro, BRTS and AMTS data to create a summary of the day's operations.</p>
+    </header>
+
+    <div class="flex flex-col md:flex-row gap-6">
+      
+      <!-- Main Content / Form -->
+      <div class="flex-1">
+        <div class="ads-card p-6 mb-6">
+          <div class="mb-5 border-b border-ads-neutral-30 pb-4">
+            <h2 class="text-base font-semibold text-ads-neutral-800 flex items-center gap-2">
+              <i data-lucide="calendar" class="w-4 h-4 text-ads-neutral-500"></i>
+              Brief Date
+            </h2>
+            <div class="mt-3">
+              <input id="brief-date" type="date" name="date"
+                     class="w-full max-w-xs px-3 py-1.5 text-sm border border-ads-neutral-40 rounded bg-ads-neutral-0 text-ads-neutral-800 focus:border-ads-blue-400 focus:ring-1 focus:ring-ads-blue-400 outline-none"
+                     value="{{ today }}" />
+            </div>
+          </div>
+
+          <div>
+            <h2 class="text-base font-semibold text-ads-neutral-800 flex items-center gap-2 mb-4">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-ads-neutral-500"></i>
+              Data Sources
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="upload-grid">
+              {% for label, name, icon in [
+                ("Metro Daily", "metro_daily", "train-front"),
+                ("Metro Incidents", "metro_incidents", "alert-triangle"),
+                ("BRTS Daily", "brts_daily", "bus-front"),
+                ("AMTS Daily", "amts_daily", "bus"),
+                ("Weather", "weather", "cloud-rain"),
+                ("Events", "events", "calendar-check")
+              ] %}
+              <label class="drop-zone flex items-center gap-3 p-3 cursor-pointer group hover:bg-blue-50" for="file-{{ name }}">
+                <div class="p-2 bg-ads-neutral-0 rounded text-ads-neutral-500 border border-ads-neutral-30 group-hover:text-ads-blue-500 transition-colors">
+                  <i data-lucide="{{ icon }}" class="w-5 h-5"></i>
+                </div>
+                <div class="flex flex-col flex-1 text-left overflow-hidden">
+                  <span class="text-sm font-medium text-ads-neutral-800">{{ label }}</span>
+                  <span class="text-xs text-ads-neutral-500 truncate" id="label-{{ name }}">Upload CSV</span>
+                </div>
+                <input id="file-{{ name }}" type="file" name="{{ name }}" accept=".csv" class="hidden" onchange="markFile('{{ name }}', this)" />
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Sidebar / Actions -->
+      <div class="w-full md:w-64 space-y-4">
+        
+        <div class="ads-card p-5">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-ads-neutral-500 mb-3">Actions</h3>
+          <button id="btn-generate" onclick="generateBrief()"
+                  class="w-full flex justify-center items-center gap-2 py-2 px-4 bg-ads-blue-500 text-white font-medium text-sm rounded hover:bg-ads-blue-600 active:bg-ads-blue-700 transition">
+            Generate Brief
+          </button>
+          <button id="btn-demo" onclick="loadDemo()"
+                  class="w-full mt-2 flex justify-center items-center gap-2 py-2 px-4 bg-ads-neutral-10 text-ads-neutral-800 font-medium text-sm rounded border border-ads-neutral-40 hover:bg-ads-neutral-30 transition">
+            Load Demo Data
+          </button>
+        </div>
+        
+        <div class="ads-card p-5">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-ads-neutral-500 mb-3">LLM Status</h3>
+          <div id="llm-badge" class="flex items-center gap-2 text-sm font-medium">
+            <i data-lucide="loader" id="llm-icon" class="w-4 h-4 text-ads-neutral-500 animate-spin"></i>
+            <span id="llm-label" class="text-ads-neutral-600">Checking...</span>
+          </div>
+        </div>
+        
+        <!-- Progress section -->
+        <div id="progress-section" class="hidden ads-card p-5">
+          <div class="flex items-center gap-2 mb-2 text-sm font-medium text-ads-neutral-800">
+            <i data-lucide="activity" class="w-4 h-4 text-ads-blue-500"></i>
+            <span id="progress-label">Processing</span>
+          </div>
+          <div class="w-full h-1.5 bg-ads-neutral-30 rounded-full overflow-hidden">
+            <div id="progress-bar" class="h-full bg-ads-blue-500 transition-all duration-300" style="width: 0%;"></div>
+          </div>
+          <p class="text-xs text-ads-neutral-500 mt-2" id="progress-sub"></p>
+        </div>
+        
+        <!-- Error section -->
+        <div id="error-box" class="hidden ads-card p-4 border-l-4 border-ads-red-500 bg-red-50">
+          <div class="flex items-center gap-2 text-ads-red-500 font-medium text-sm mb-1">
+            <i data-lucide="alert-circle" class="w-4 h-4"></i> Error
+          </div>
+          <p class="text-xs text-ads-neutral-800" id="error-msg"></p>
+        </div>
+        
+      </div>
+    </div>
+
+    <!-- Brief iframe -->
+    <div id="brief-wrapper" class="hidden mt-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-medium text-ads-neutral-800 flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-ads-neutral-500"></i>
+          Generated Document
+        </h2>
+        <div class="flex gap-2">
+          <button id="btn-download" onclick="downloadBrief()" class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-ads-neutral-10 text-ads-neutral-800 border border-ads-neutral-40 rounded hover:bg-ads-neutral-30 transition">
+            <i data-lucide="download" class="w-4 h-4"></i> Download HTML
+          </button>
+          <button onclick="window.open(currentBriefUrl, '_blank')" class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-ads-neutral-10 text-ads-neutral-800 border border-ads-neutral-40 rounded hover:bg-ads-neutral-30 transition">
+            <i data-lucide="external-link" class="w-4 h-4"></i> Open in Tab
+          </button>
+        </div>
+      </div>
+      <div class="ads-card p-0 overflow-hidden bg-white">
+        <iframe id="brief-frame" src="" class="w-full border-0" style="height: 75vh;"></iframe>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    let currentBriefId = null;
+    let currentBriefUrl = null;
+
+    document.getElementById('brief-date').value = new Date().toISOString().slice(0, 10);
+
+    async function checkLLM() {
+      try {
+        const r = await fetch('/health');
+        const d = await r.json();
+        const icon = document.getElementById('llm-icon');
+        const label = document.getElementById('llm-label');
+        icon.classList.remove('animate-spin');
+        
+        // Use Lucide's createIcons method to replace the icon dynamically
+        if (d.llm_online) {
+          icon.setAttribute('data-lucide', 'check-circle');
+          icon.className = 'w-4 h-4 text-ads-green-500';
+          label.textContent = 'Online';
+        } else {
+          icon.setAttribute('data-lucide', 'alert-circle');
+          icon.className = 'w-4 h-4 text-ads-yellow-500';
+          label.textContent = 'Offline (Templates)';
+        }
+        lucide.createIcons();
+      } catch {
+        const label = document.getElementById('llm-label');
+        label.textContent = 'Unreachable';
+      }
+    }
+    checkLLM();
+    setInterval(checkLLM, 15000);
+
+    function markFile(name, input) {
+      const lbl = document.getElementById('label-' + name);
+      if (input.files.length > 0) {
+        lbl.textContent = input.files[0].name;
+        lbl.className = 'text-xs text-ads-green-500 font-medium truncate';
+      }
+    }
+
+    // Drag-and-drop
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const input = zone.querySelector('input[type=file]');
+        if (e.dataTransfer.files.length) {
+          input.files = e.dataTransfer.files;
+          markFile(input.name, input);
+        }
+      });
+    });
+
+    function setProgress(pct, label, sub) {
+      document.getElementById('progress-section').classList.remove('hidden');
+      document.getElementById('progress-bar').style.width = pct + '%';
+      document.getElementById('progress-label').textContent = label;
+      document.getElementById('progress-sub').textContent = sub || '';
+    }
+
+    function showError(msg) {
+      document.getElementById('error-box').classList.remove('hidden');
+      document.getElementById('error-msg').textContent = msg;
+      document.getElementById('progress-section').classList.add('hidden');
+    }
+    function clearError() {
+      document.getElementById('error-box').classList.add('hidden');
+    }
+
+    async function loadDemo() {
+      clearError();
+      const btn = document.getElementById('btn-demo');
+      btn.disabled = true;
+      setProgress(20, 'Generating data...', 'Creating synthetic history');
+      try {
+        const r = await fetch('/demo', { method: 'POST' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'Demo generation failed');
+        setProgress(100, 'Demo data ready!', 'Click Generate Brief');
+        document.getElementById('brief-date').value = d.demo_date;
+        setTimeout(() => { btn.disabled = false; }, 2000);
+      } catch(e) {
+        showError(e.message);
+        btn.disabled = false;
+      }
+    }
+
+    async function generateBrief() {
+      clearError();
+      const btn = document.getElementById('btn-generate');
+      btn.disabled = true;
+      document.getElementById('brief-wrapper').classList.add('hidden');
+
+      setProgress(10, 'Reading data...', 'Ingesting CSV files');
+      const formData = new FormData();
+      formData.append('date', document.getElementById('brief-date').value);
+      ['metro_daily','metro_incidents','brts_daily','amts_daily','weather','events'].forEach(n => {
+        const el = document.getElementById('file-' + n);
+        if (el.files.length) formData.append(n, el.files[0]);
+      });
+
+      try {
+        setProgress(40, 'Processing...', 'Anomaly detection engine running');
+        const r = await fetch('/generate', { method: 'POST', body: formData });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'Generation failed');
+
+        setProgress(80, 'Rendering...', 'Preparing document view');
+        currentBriefId = d.brief_id;
+        currentBriefUrl = '/brief/' + d.brief_id;
+
+        await new Promise(res => setTimeout(res, 400));
+        setProgress(100, 'Complete', d.llm_online ? 'LLM background polish active' : 'Template used');
+
+        document.getElementById('brief-frame').src = currentBriefUrl;
+        document.getElementById('brief-wrapper').classList.remove('hidden');
+
+        if (d.llm_online) {
+          setTimeout(() => {
+            document.getElementById('brief-frame').src = currentBriefUrl + '?t=' + Date.now();
+          }, 36000);
+        }
+      } catch(e) {
+        showError(e.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function downloadBrief() {
+      if (!currentBriefId) return;
+      window.location.href = '/brief/' + currentBriefId + '/download';
+    }
+  </script>
+</body>
+</html>

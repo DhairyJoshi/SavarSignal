@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Morning Brief – {{ date_str }}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="min-h-screen font-sans text-ads-neutral-800 bg-white md:bg-ads-neutral-10">
+
+  <!-- Print-only minimal nav -->
+  <nav class="no-print flex items-center justify-between px-6 py-3 border-b border-ads-neutral-40 bg-ads-neutral-0 sticky top-0 z-50">
+    <div class="flex items-center gap-2">
+      <i data-lucide="file-text" class="w-5 h-5 text-ads-blue-500"></i>
+      <span class="text-sm font-semibold text-ads-neutral-800">Brief #{{ brief_id }}</span>
+    </div>
+    <div class="flex items-center gap-3">
+      {% if llm_online %}
+      <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded bg-green-50 border border-green-200 text-green-700 font-medium">
+        <i data-lucide="bot" class="w-3.5 h-3.5"></i> LLM polished
+      </span>
+      {% else %}
+      <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded bg-yellow-50 border border-yellow-200 text-yellow-700 font-medium">
+        <i data-lucide="bot-off" class="w-3.5 h-3.5"></i> Templates only
+      </span>
+      {% endif %}
+      <button onclick="window.print()" class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-ads-neutral-10 text-ads-neutral-800 border border-ads-neutral-40 rounded hover:bg-ads-neutral-20 transition">
+        <i data-lucide="printer" class="w-4 h-4"></i> Print
+      </button>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-6 py-8 brief-page md:my-8 md:ads-card">
+    
+    {% if missing_sources or quality_report.has_issues %}
+    <div class="no-print mb-6 rounded border border-ads-yellow-400 bg-yellow-50 p-4 flex gap-3">
+      <i data-lucide="alert-triangle" class="w-5 h-5 text-ads-yellow-500 flex-shrink-0 mt-0.5"></i>
+      <div>
+        <h4 class="text-sm font-semibold text-yellow-800 mb-1">Data Quality Issues</h4>
+        <ul class="text-xs text-yellow-700 space-y-0.5 list-disc pl-4">
+          {% for line in quality_report.summary_lines() %}
+          <li>{{ line }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- HEADER -->
+    <header class="mb-8 border-b border-ads-neutral-40 pb-4">
+      <div class="flex items-end justify-between">
+        <div>
+          <h2 class="text-xs font-bold tracking-widest text-ads-neutral-500 uppercase mb-1">Ahmedabad Transport MIS</h2>
+          <h1 class="text-2xl font-semibold text-ads-neutral-800 tracking-tight">Daily Operations Brief</h1>
+        </div>
+        <div class="text-right">
+          <p class="text-lg font-medium text-ads-neutral-800">{{ date_str }}</p>
+          <p class="text-sm text-ads-neutral-500">{{ weekday }}</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- EXEC SUMMARY -->
+    <section class="mb-8 p-5 rounded border border-ads-blue-100 bg-blue-50/50">
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="layout-dashboard" class="w-4 h-4 text-ads-blue-500"></i>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-ads-blue-600">Executive Summary</h3>
+      </div>
+      <div class="text-sm text-ads-neutral-800 space-y-1.5 pl-6">
+        {% for line in executive_summary.split('\n') %}
+        <p class="{% if loop.first %}font-medium{% endif %}">{{ line }}</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- KPI STRIP -->
+    <section class="mb-8">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-ads-neutral-500 mb-3 flex items-center gap-2">
+        <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+        System KPIs
+      </h3>
+      <div class="grid grid-cols-3 gap-4">
+        
+        <!-- Metro -->
+        <div class="ads-card p-4 shadow-none {% if not kpis.metro %}opacity-50{% endif %}">
+          <div class="flex justify-between items-start mb-2">
+            <h4 class="text-sm font-semibold text-ads-neutral-500 flex items-center gap-1.5">
+              <i data-lucide="train-front" class="w-4 h-4 text-ads-blue-500"></i> METRO
+            </h4>
+            {% if not kpis.metro %}
+            <span class="text-[10px] uppercase font-bold text-ads-red-500 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">No Data</span>
+            {% endif %}
+          </div>
+          {% if kpis.metro %}
+          <p class="text-2xl font-semibold text-ads-neutral-800">{{ "{:,}".format(kpis.metro.total_ridership) }}</p>
+          <p class="text-xs text-ads-neutral-500 mt-1">total entries</p>
+          {% if kpis.metro.total_gate_downtime > 0 %}
+          <div class="mt-2 pt-2 border-t border-ads-neutral-30 text-xs font-medium text-ads-red-500 flex items-center gap-1">
+            <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+            {{ kpis.metro.total_gate_downtime // 60 }}h {{ kpis.metro.total_gate_downtime % 60 }}m gate downtime
+          </div>
+          {% endif %}
+          {% endif %}
+        </div>
+
+        <!-- BRTS -->
+        <div class="ads-card p-4 shadow-none {% if not kpis.brts %}opacity-50{% endif %}">
+          <div class="flex justify-between items-start mb-2">
+            <h4 class="text-sm font-semibold text-ads-neutral-500 flex items-center gap-1.5">
+              <i data-lucide="bus-front" class="w-4 h-4 text-ads-blue-500"></i> BRTS
+            </h4>
+            {% if not kpis.brts %}
+            <span class="text-[10px] uppercase font-bold text-ads-red-500 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">No Data</span>
+            {% endif %}
+          </div>
+          {% if kpis.brts %}
+          <p class="text-2xl font-semibold text-ads-neutral-800">{{ "{:,}".format(kpis.brts.total_boardings) }}</p>
+          <p class="text-xs text-ads-neutral-500 mt-1">boardings</p>
+          <div class="mt-2 pt-2 border-t border-ads-neutral-30 text-xs font-medium flex items-center gap-1 {% if kpis.brts.service_pct >= 95 %}text-ads-green-500{% elif kpis.brts.service_pct >= 90 %}text-ads-yellow-500{% else %}text-ads-red-500{% endif %}">
+            <i data-lucide="{% if kpis.brts.service_pct >= 95 %}check-circle{% else %}alert-triangle{% endif %}" class="w-3.5 h-3.5"></i>
+            {{ kpis.brts.service_pct }}% service ({{ kpis.brts.trips_run }}/{{ kpis.brts.trips_planned }})
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- AMTS -->
+        <div class="ads-card p-4 shadow-none {% if not kpis.amts %}opacity-50{% endif %}">
+          <div class="flex justify-between items-start mb-2">
+            <h4 class="text-sm font-semibold text-ads-neutral-500 flex items-center gap-1.5">
+              <i data-lucide="bus" class="w-4 h-4 text-ads-blue-500"></i> AMTS
+            </h4>
+            {% if not kpis.amts %}
+            <span class="text-[10px] uppercase font-bold text-ads-red-500 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">No Data</span>
+            {% endif %}
+          </div>
+          {% if kpis.amts %}
+          <p class="text-2xl font-semibold text-ads-neutral-800">{{ "{:,}".format(kpis.amts.total_boardings) }}</p>
+          <p class="text-xs text-ads-neutral-500 mt-1">boardings</p>
+          <div class="mt-2 pt-2 border-t border-ads-neutral-30 text-xs font-medium flex items-center gap-1 {% if kpis.amts.service_pct >= 95 %}text-ads-green-500{% elif kpis.amts.service_pct >= 90 %}text-ads-yellow-500{% else %}text-ads-red-500{% endif %}">
+            <i data-lucide="{% if kpis.amts.service_pct >= 95 %}check-circle{% else %}alert-triangle{% endif %}" class="w-3.5 h-3.5"></i>
+            {{ kpis.amts.service_pct }}% service ({{ kpis.amts.trips_run }}/{{ kpis.amts.trips_planned }})
+          </div>
+          {% endif %}
+        </div>
+
+      </div>
+    </section>
+
+    <!-- EXCEPTIONS -->
+    <section class="mb-8">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-ads-neutral-500 flex items-center gap-2">
+          <i data-lucide="alert-octagon" class="w-4 h-4"></i>
+          Detected Exceptions
+        </h3>
+        {% if overflow_count > 0 %}
+        <span class="text-xs font-medium text-ads-neutral-500 bg-ads-neutral-20 px-2 py-0.5 rounded border border-ads-neutral-40">
+          +{{ overflow_count }} more logged
+        </span>
+        {% endif %}
+      </div>
+
+      {% if exceptions %}
+      <div class="ads-card overflow-hidden shadow-none">
+        <table class="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr class="bg-ads-neutral-10 border-b border-ads-neutral-40 text-xs font-semibold text-ads-neutral-500">
+              <th class="py-2.5 px-4 w-28">Priority</th>
+              <th class="py-2.5 px-4 w-32">Entity</th>
+              <th class="py-2.5 px-4">Observation</th>
+              <th class="py-2.5 px-4 text-right w-20">Impact</th>
+              <th class="py-2.5 px-4 w-28">Confidence</th>
+              <th class="py-2.5 px-4 w-10"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-ads-neutral-30">
+            {% for ex in exceptions %}
+            <tr class="hover:bg-ads-neutral-10/30 cursor-pointer group" onclick="document.getElementById('details-{{ loop.index }}').classList.toggle('hidden'); document.getElementById('icon-{{ loop.index }}').classList.toggle('rotate-180')">
+              
+              <!-- Priority -->
+              <td class="py-3 px-4">
+                <span class="px-2 py-1 rounded text-[11px] uppercase tracking-wider flex items-center justify-center w-max gap-1
+                             severity-{{ ex.severity | lower }}">
+                  {% if ex.severity == 'High' %}
+                  <i data-lucide="chevrons-up" class="w-3 h-3"></i>
+                  {% elif ex.severity == 'Medium' %}
+                  <i data-lucide="chevron-up" class="w-3 h-3"></i>
+                  {% else %}
+                  <i data-lucide="minus" class="w-3 h-3"></i>
+                  {% endif %}
+                  {{ ex.severity }}
+                  {% if ex.original_severity and ex.original_severity != ex.severity %}
+                  <span class="opacity-75 normal-case tracking-normal">(was {{ ex.original_severity }})</span>
+                  {% endif %}
+                </span>
+              </td>
+
+              <!-- Entity -->
+              <td class="py-3 px-4">
+                <div class="font-medium text-ads-neutral-800">{{ ex.entity_id }}</div>
+                <div class="text-[11px] text-ads-neutral-500 mt-0.5">{{ ex.system }}</div>
+              </td>
+
+              <!-- Observation -->
+              <td class="py-3 px-4 pr-8">
+                <p class="text-ads-neutral-800 text-[13px] leading-relaxed">
+                  {{ ex.narrative }}
+                  {% if ex.recurrence_label %}
+                  <span class="inline-block px-1.5 py-0.5 bg-ads-yellow-500 text-ads-neutral-0 text-[10px] font-bold rounded tracking-wide ml-1" style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">{{ ex.recurrence_label }}</span>
+                  {% endif %}
+                </p>
+              </td>
+
+              <!-- Impact -->
+              <td class="py-3 px-4 text-right font-mono text-xs">
+                {% if ex.metric == 'ridership' %}
+                  <span class="font-medium {% if ex.direction == 'down' %}text-ads-red-500{% else %}text-ads-green-500{% endif %}">
+                    {{ ex.pct_change | pct_fmt }}
+                  </span>
+                {% elif ex.metric == 'trips_ratio' %}
+                  <span class="font-medium text-ads-red-500">{{ (ex.value * 100) | round(1) }}%</span>
+                {% elif ex.metric == 'breakdowns' %}
+                  <span class="font-medium text-ads-red-500">{{ ex.value | int }} brk</span>
+                {% elif ex.metric == 'gate_downtime_min' %}
+                  <span class="font-medium text-ads-red-500">{{ (ex.value / 60) | round(1) }}h</span>
+                {% endif %}
+              </td>
+
+              <!-- Confidence -->
+              <td class="py-3 px-4">
+                <span class="px-2 py-1 rounded text-[11px] uppercase tracking-wider flex items-center justify-center w-max gap-1
+                             conf-{{ ex.confidence | lower }}">
+                  <i data-lucide="{% if ex.confidence == 'Likely' %}check{% elif ex.confidence == 'Possible' %}help-circle{% else %}x{% endif %}" class="w-3 h-3"></i>
+                  {{ ex.confidence }}
+                </span>
+              </td>
+              
+              <!-- Toggle chevron -->
+              <td class="py-3 px-4 text-center">
+                <button type="button" class="w-6 h-6 rounded group-hover:bg-ads-neutral-30 flex items-center justify-center transition-colors print:hidden">
+                  <i id="icon-{{ loop.index }}" data-lucide="chevron-down" class="w-4 h-4 text-ads-neutral-500 transition-transform duration-200"></i>
+                </button>
+              </td>
+            </tr>
+
+            <!-- Expanded details row -->
+            <tr id="details-{{ loop.index }}" class="hidden print:!table-row bg-ads-neutral-10/40">
+              <td colspan="6" class="p-0 border-b border-ads-neutral-40">
+                <div class="px-6 py-4 grid grid-cols-2 gap-8 ml-8 mr-12">
+                  <div>
+                    <h5 class="text-[10px] font-bold text-ads-neutral-500 uppercase tracking-wider mb-2">Root Cause & Evidence</h5>
+                    <div class="text-ads-neutral-800 text-[13px] font-medium mb-1.5">{{ ex.cause_label }}</div>
+                    {% if ex.evidence %}
+                    <ul class="pl-2 border-l-2 border-ads-neutral-40 text-ads-neutral-500 space-y-1 mt-2 text-xs">
+                      {% for ev in ex.evidence %}
+                      <li class="flex items-start gap-1.5">
+                        <i data-lucide="corner-down-right" class="w-3 h-3 flex-shrink-0 mt-0.5 opacity-50"></i>
+                        <span>{{ ev }}</span>
+                      </li>
+                      {% endfor %}
+                      {% if ex.past_dates %}
+                      <li class="flex items-start gap-1.5 mt-1 pt-1 border-t border-ads-neutral-40/50">
+                        <i data-lucide="history" class="w-3 h-3 flex-shrink-0 mt-0.5 opacity-50"></i>
+                        <span>Past occurrences: {{ ex.past_dates | join(', ') }}</span>
+                      </li>
+                      {% endif %}
+                    </ul>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <h5 class="text-[10px] font-bold text-ads-neutral-500 uppercase tracking-wider mb-2">Action Plan</h5>
+                    <div class="p-3 bg-white border border-ads-neutral-40 rounded shadow-sm">
+                      <div class="text-[13px] font-semibold text-ads-neutral-800 flex items-center gap-1.5">
+                        <i data-lucide="user" class="w-3.5 h-3.5 text-ads-blue-500"></i> {{ ex.owner or 'Unassigned' }}
+                      </div>
+                      <div class="text-[12px] text-ads-neutral-500 mt-1.5 leading-snug">{{ ex.action or 'No action specified' }}</div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="ads-card p-10 text-center flex flex-col items-center shadow-none">
+        <div class="w-12 h-12 bg-green-50 border border-green-200 rounded-full flex items-center justify-center text-ads-green-500 mb-4">
+          <i data-lucide="check" class="w-6 h-6"></i>
+        </div>
+        <h4 class="font-medium text-base text-ads-neutral-800">No anomalies detected</h4>
+        <p class="text-sm text-ads-neutral-500 mt-1">All systems operating within expected baselines for {{ weekday }}.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="mt-12 pt-5 border-t border-ads-neutral-40 text-[11px] text-ads-neutral-500 flex flex-col sm:flex-row justify-between items-start gap-4">
+      <div class="flex flex-col gap-1.5">
+        <span class="flex items-center gap-1.5"><i data-lucide="settings" class="w-3 h-3"></i> <strong>Detection:</strong> ridership &ge;10% and |z|&ge;2, service &lt;90%, breakdowns &ge;2&times;</span>
+        <span class="flex items-center gap-1.5"><i data-lucide="history" class="w-3 h-3"></i> <strong>Baseline:</strong> Same-weekday median (last 4 weeks)</span>
+      </div>
+      <p class="text-right">
+        Report ID: {{ brief_id }}<br>
+        Generated automatically
+      </p>
+    </footer>
+
+  </main>
+
+  <script>
+    // Initialize icons
+    lucide.createIcons();
+  </script>
+</body>
+</html>

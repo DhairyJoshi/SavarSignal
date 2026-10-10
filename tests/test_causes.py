@@ -126,13 +126,13 @@ class TestEndToEnd:
 
     def test_all_injected_anomalies_detected(self):
         import json
-        from ingest import ingest
-        from normalize import normalize
-        from baseline import compute_baselines
-        from detect import detect
-        from causes import attach_causes
-        from datagen import generate
-        from config import DATA_DIR
+        from app.core.ingest import ingest
+        from app.core.normalize import normalize
+        from app.core.baseline import compute_baselines
+        from app.core.detect import detect
+        from app.core.causes import attach_causes
+        from app.datagen import generate
+        from app.config import DATA_DIR
 
         # Generate demo data fresh
         generate(target_date=date(2026, 10, 10), out_dir=DATA_DIR)

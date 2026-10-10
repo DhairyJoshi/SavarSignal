@@ -56,8 +56,8 @@ def _run_pipeline(
     dfs, quality_report = ingest(data_dir)
     long_df = normalize(dfs, target_date)
     analysis_df, skipped = compute_baselines(long_df, target_date)
-    from config import TOP_N
-    from history import track_recurrences
+    from app.config import TOP_N
+    from app.core.history import track_recurrences
 
     all_exceptions, _ = detect(analysis_df, dfs, target_date, top_n=9999)
     all_exceptions = attach_causes(all_exceptions, dfs, target_date)
@@ -133,7 +133,7 @@ async def health():
 async def demo():
     """Generate synthetic demo data and return the demo date."""
     try:
-        from history import clear_history, save_history
+        from app.core.history import clear_history, save_history
         from datetime import date, timedelta
         
         clear_history()

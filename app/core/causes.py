@@ -164,7 +164,7 @@ def _corridor_disruption(
     d: date,
 ) -> tuple[bool, list[str]]:
     """Checks if sibling routes (same system) are also below trips_ratio threshold."""
-    from config import TRIPS_RATIO
+    from app.config import TRIPS_RATIO
     df = brts if system == "BRTS" else amts
     if df is None:
         return False, []

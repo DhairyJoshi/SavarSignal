@@ -26,7 +26,7 @@ from starlette.requests import Request
 import app.config as config
 from app.core.baseline import compute_baselines
 from app.core.causes import attach_causes
-from app.datagen import gen_demo_data
+from app.datagen import generate as gen_demo_data
 from app.core.detect import detect
 from app.core.ingest import ingest, DataQualityReport
 from app.core.narrate import (build_executive_summary, build_template_narratives,
